@@ -3,6 +3,8 @@ package lego.opencvdemo;
 import android.Manifest;
 import android.annotation.TargetApi;
 import android.content.pm.PackageManager;
+import android.content.res.Resources;
+import android.graphics.Paint;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
@@ -21,6 +23,9 @@ import org.opencv.android.OpenCVLoader;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.core.Point;
+import org.opencv.core.Scalar;
+import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
 // OpenCV Classes
@@ -37,6 +42,11 @@ public class MainActivity extends AppCompatActivity implements CvCameraViewListe
     // Used in Camera selection from menu (when implemented)
     private boolean              mIsJavaCamera = true;
     private MenuItem             mItemSwitchCamera = null;
+
+    //FOR IMAGE PROCESSING
+    private int                    mViewMode;
+    private Mat                    mIntermediateMat;
+    private Mat                    mGray;
 
     // These variables are used (at the moment) to fix camera orientation from 270degree to 0degree
     Mat mRgba;
@@ -148,20 +158,53 @@ public class MainActivity extends AppCompatActivity implements CvCameraViewListe
         mRgba = new Mat(height, width, CvType.CV_8UC4);
         mRgbaF = new Mat(height, width, CvType.CV_8UC4);
         mRgbaT = new Mat(width, width, CvType.CV_8UC4);
+
+        mIntermediateMat = new Mat(height, width, CvType.CV_8UC4);
+        mGray = new Mat(height, width, CvType.CV_8UC1);
     }
 
     public void onCameraViewStopped() {
         mRgba.release();
+        mGray.release();
+        mIntermediateMat.release();
     }
 
     public Mat onCameraFrame(CvCameraViewFrame inputFrame) {
 
         // TODO Auto-generated method stub
         mRgba = inputFrame.rgba();
-        // Rotate mRgba 90 degrees
-        Core.transpose(mRgba, mRgbaT);
-        Imgproc.resize(mRgbaT, mRgbaF, mRgbaF.size(), 0,0, 0);
-        Core.flip(mRgbaF, mRgba, 1 );
+
+        //canny dat shit
+//        mRgba = inputFrame.rgba();
+//        Imgproc.Canny(inputFrame.gray(), mIntermediateMat, 80, 100);
+//        Imgproc.cvtColor(mIntermediateMat, mRgba, Imgproc.COLOR_GRAY2RGBA, 4);
+
+        //FILTER
+        Mat greyImg = new Mat();
+        Imgproc.cvtColor(mRgba, greyImg, Imgproc.COLOR_BGR2GRAY);
+        double sigmaX = 3;
+        Imgproc.GaussianBlur(greyImg, greyImg, new Size(5, 5), sigmaX);
+//		blur(greyImg, greyImg, new Size(5, 5));
+        Imgproc.adaptiveThreshold(greyImg, greyImg, 255, Imgproc.ADAPTIVE_THRESH_MEAN_C, Imgproc.THRESH_BINARY, 13, 10);
+
+        //EDGES
+        Mat edges = new Mat();
+        Imgproc.Canny(greyImg, edges, 300, 600, 5, true);
+
+        //DRAW LINES
+        Mat lines = new Mat();
+        int threshold = 50;
+        int minLineLength = 75;
+        int maxLineGap = 20;
+        //threshold: The minimum number of intersections to “detect” a line
+        //minLinLength: The minimum number of points that can form a line. Lines with less than this number of points are disregarded.
+        //maxLineGap: The maximum gap between two points to be considered in the same line.
+        Imgproc.HoughLinesP(edges, lines, 1, Math.PI / 180, threshold, minLineLength, maxLineGap);
+        System.out.println(lines.cols());
+        for(int i = 0; i < lines.cols(); i++) {
+            double[] val = lines.get(0, i);
+            Imgproc.line(mRgba, new Point(val[0], val[1]), new Point(val[2], val[3]), new Scalar(255, 255, 0), 2);
+        }
 
         return mRgba; // This function must return
     }
