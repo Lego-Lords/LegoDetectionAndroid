@@ -200,9 +200,10 @@ public class MainActivity extends AppCompatActivity implements CvCameraViewListe
         //minLinLength: The minimum number of points that can form a line. Lines with less than this number of points are disregarded.
         //maxLineGap: The maximum gap between two points to be considered in the same line.
         Imgproc.HoughLinesP(edges, lines, 1, Math.PI / 180, threshold, minLineLength, maxLineGap);
-        System.out.println(lines.cols());
-        for(int i = 0; i < lines.cols(); i++) {
-            double[] val = lines.get(0, i);
+        System.out.println("EDGES AKO: " + edges.cols());
+        System.out.println("I AM LINES COLS: " + lines.rows());
+        for(int i = 0; i < lines.rows(); i++) {
+            double[] val = lines.get(i, 0);
             Imgproc.line(mRgba, new Point(val[0], val[1]), new Point(val[2], val[3]), new Scalar(255, 255, 0), 2);
         }
 
